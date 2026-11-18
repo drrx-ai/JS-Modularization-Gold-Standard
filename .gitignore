@@ -2,3 +2,5 @@ node_modules/
 modules/
 *.log
 .DS_Store
+*.tgz
+.tmp-selftest-*/

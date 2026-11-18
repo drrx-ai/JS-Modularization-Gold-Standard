@@ -1,21 +1,62 @@
 {
-  "name": "monolith-carve",
+  "name": "js-modularization-gold-standard",
   "version": "0.1.0",
-  "description": "Safely split a Node monolith into register(app, kernel) modules — verbatim moves, with gates that prove behavior didn't change.",
+  "description": "Split CommonJS Node and Express monoliths into modules with AST dependency analysis and a six-gate verification workflow.",
   "type": "module",
-  "bin": { "carve": "bin/cli.mjs" },
+  "bin": {
+    "js-modularization-gold-standard": "bin/cli.mjs",
+    "jsmod": "bin/cli.mjs"
+  },
   "exports": {
     "./analyze": "./src/analyze.mjs",
     "./extract": "./src/extract.mjs",
     "./survey": "./src/survey.mjs"
   },
-  "files": ["bin", "src", "examples", "README.md", "LICENSE"],
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "jsmod.config.example.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "test": "node test/selftest.mjs"
+    "test": "node test/selftest.mjs",
+    "test:package": "node test/package-smoke.mjs",
+    "prepublishOnly": "npm test && npm run test:package"
   },
-  "keywords": ["modularization", "refactoring", "monolith", "ast", "ts-morph",
-    "codemod", "express", "nodejs", "code-splitting", "verbatim"],
-  "engines": { "node": ">=18" },
+  "keywords": [
+    "modularization",
+    "refactoring",
+    "monolith",
+    "ast",
+    "ts-morph",
+    "codemod",
+    "express",
+    "nodejs",
+    "code-splitting",
+    "verbatim"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT",
-  "dependencies": { "ts-morph": "^28.0.0" }
+  "dependencies": {
+    "ts-morph": "^28.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drrx-ai/JS-Modularization-Gold-Standard.git"
+  },
+  "homepage": "https://github.com/drrx-ai/JS-Modularization-Gold-Standard#readme",
+  "bugs": {
+    "url": "https://github.com/drrx-ai/JS-Modularization-Gold-Standard/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "express": "^5.3.0"
+  }
 }

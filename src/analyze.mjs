@@ -1,8 +1,8 @@
-// carve — free-variable analysis
+// jsmod — free-variable analysis
 //
 // The kernel of the whole tool: given a region of a monolith, work out which
 // identifiers it *references but does not own*. Those are the symbols that have
-// to be wired across the module boundary. Everything in carve is built on top
+// to be wired across the module boundary. Everything in jsmod is built on top
 // of getting this exactly right — including the auth-gated handler bodies that
 // HTTP probes never execute.
 

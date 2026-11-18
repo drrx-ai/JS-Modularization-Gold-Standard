@@ -1,4 +1,4 @@
-// carve — verbatim extraction engine
+// jsmod — verbatim extraction engine
 //
 // Core principle: an extraction is a *move*, never a rewrite. We lift a region
 // of top-level statements out of the monolith and drop it, byte-for-byte, into
@@ -190,7 +190,7 @@ export function planModule(sourceFile, mod) {
 
   const moduleSrc =
 `"use strict";
-// Verbatim-extracted from the monolith by carve. Do not refactor in place.
+// Verbatim-extracted from the monolith by jsmod. Do not refactor in place.
 // Generated module — edits should be made as deliberate follow-up commits.
 ${requires.length ? requires.join("\n") + "\n" : ""}
 module.exports.register = function register(${carrier}, kernel = {}) {

@@ -1,5 +1,5 @@
 // examples/server.js — a deliberately tangled Express monolith.
-// Used in the README walkthrough and as carve's own test fixture.
+// Used in the README walkthrough and as jsmod's own test fixture.
 const express = require("express");
 const crypto = require("crypto");
 
@@ -43,4 +43,4 @@ app.delete("/session/:id", (req, res) => {
   res.json({ deleted: true });
 });
 
-app.listen(3000, () => console.log("up on 3000"));
+const server = app.listen(Number(process.env.PORT ?? 3000), "127.0.0.1", () => console.log(`up on ${server.address().port}`));

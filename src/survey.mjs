@@ -1,4 +1,4 @@
-// carve — survey
+// jsmod — survey
 //
 // Before you cut, you need to know where the seams are. survey walks every
 // top-level route registration, records which in-file symbols each one touches,

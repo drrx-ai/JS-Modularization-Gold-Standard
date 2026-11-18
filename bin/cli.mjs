@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// carve — safely split a Node monolith into register(app, kernel) modules,
+// jsmod — safely split a Node monolith into register(app, kernel) modules,
 // and prove behavior didn't change.
 //
 // Commands:
-//   carve survey   <file> [--app app]               map routes -> symbols, suggest clusters
-//   carve analyze  <file> --range A:B [--app app]    free-variable report for a region
-//   carve extract  --config carve.config.json [--dry] perform verbatim extractions
-//   carve audit    <moduleFile>                       residual free-var gate (must be clean)
-//   carve verify   --config carve.config.json         run the automatable gates
+//   jsmod survey   <file> [--app app]               map routes -> symbols, suggest clusters
+//   jsmod analyze  <file> --range A:B [--app app]    free-variable report for a region
+//   jsmod extract  --config jsmod.config.json [--dry] perform verbatim extractions
+//   jsmod audit    <moduleFile>                       residual free-var gate (must be clean)
+//   jsmod verify   --config jsmod.config.json         run the automatable gates
 
 import fs from "node:fs";
 import path from "node:path";
@@ -18,6 +18,7 @@ import { survey } from "../src/survey.mjs";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
+const { version } = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 function flag(name, fallback = undefined) {
   const i = args.indexOf(`--${name}`);
@@ -27,7 +28,7 @@ function flag(name, fallback = undefined) {
 }
 const has = (name) => args.includes(`--${name}`);
 
-function die(msg) { console.error("carve: " + msg); process.exit(1); }
+function die(msg) { console.error("jsmod: " + msg); process.exit(1); }
 
 function loadSourceFile(file) {
   if (!file || !fs.existsSync(file)) die(`file not found: ${file}`);
@@ -97,7 +98,7 @@ function cmdAnalyze() {
 
 // ---------------------------------------------------------------- extract
 function readConfig() {
-  const cfgPath = flag("config", "carve.config.json");
+  const cfgPath = flag("config", "jsmod.config.json");
   if (!fs.existsSync(cfgPath)) die(`config not found: ${cfgPath}`);
   const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
   if (!cfg.source) die("config needs a \"source\" path");
@@ -152,7 +153,7 @@ function cmdExtract() {
   }
   fs.writeFileSync(path.resolve(cfg.source), parentText);
   console.log(`patched ${cfg.source}`);
-  console.log(`\nNext: run \`carve verify --config <config>\` to clear the gates.`);
+  console.log(`\nNext: run \`jsmod verify --config <config>\` to clear the gates.`);
 }
 
 // ---------------------------------------------------------------- audit
@@ -185,7 +186,7 @@ function auditModuleFile(file) {
 
 function cmdAudit() {
   const file = args[1];
-  if (!file) die("usage: carve audit <moduleFile>");
+  if (!file) die("usage: jsmod audit <moduleFile>");
   const r = auditModuleFile(file);
   if (r.ok) { console.log(`\n${file}: [] (clean) ✓\n`); }
   else {
@@ -255,23 +256,25 @@ function cmdVerify() {
 }
 
 // ---------------------------------------------------------------- dispatch
-const HELP = `carve — verbatim monolith modularization
+const HELP = `jsmod — verbatim monolith modularization
 
-  carve survey  <file> [--app app]
-  carve analyze <file> --range A:B [--app app]
-  carve extract --config carve.config.json [--dry]
-  carve audit   <moduleFile>
-  carve verify  --config carve.config.json
+  jsmod survey  <file> [--app app]
+  jsmod analyze <file> --range A:B [--app app]
+  jsmod extract --config jsmod.config.json [--dry]
+  jsmod audit   <moduleFile>
+  jsmod verify  --config jsmod.config.json
 `;
 
 try {
   switch (cmd) {
+    case "--version": case "-v": console.log(version); break;
+    case undefined: case "--help": case "-h": console.log(HELP); break;
     case "survey": cmdSurvey(); break;
     case "analyze": cmdAnalyze(); break;
     case "extract": cmdExtract(); break;
     case "audit": cmdAudit(); break;
     case "verify": cmdVerify(); break;
-    default: console.log(HELP);
+    default: die(`unknown command: ${cmd}\n${HELP}`);
   }
 } catch (e) {
   die(e.stack || e.message);

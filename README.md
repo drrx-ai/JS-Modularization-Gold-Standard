@@ -1,151 +1,128 @@
 # JS Modularization Gold Standard
 
-**Safely split a Node monolith into modules — and prove behavior didn't change.**
+**5,121 → 1,402 lines in a production Express `server.js`, with zero behavioral diffs reported across incremental PRs.**
 
-> Command-line tool name: `jsmod`
+The six-gates method behind that result is now a CommonJS modularization CLI: `jsmod`. Move one domain, preserve shared state, check the result, repeat.
 
-`jsmod` lifts regions of a giant `server.js`-style file into small
-`register(app, kernel)` modules. Every extraction is a **verbatim move**: the
-code you pull out is byte-for-byte the code that was there, except for the one
-mechanical edit a module boundary forces — references to mutable singletons
-become getter/setter calls so the live binding survives the move.
-
-It does **not** refactor. Refactoring and modularizing in the same step is how
-you ship silent behavior changes. `jsmod` moves; you refactor later, as
-separate, reviewable commits.
-
-> Provenance: this is a clean-room, generic implementation of a methodology
-> proven on a real production monolith (an Express `server.js` taken from
-> 5,121 lines down to 1,402 across incremental PRs, zero behavioral diffs). The
-> npm package name (`js-modularization-gold-standard`) — verify availability
-> before publishing to npm; GitHub repo name is independent.
-
----
-
-## The idea
-
-A monolith accretes route handlers that quietly share helpers and mutable
-state. You can't just cut-and-paste a handler into its own file: it closes over
-things it no longer has, and any `let` it touches becomes a dead copy.
-
-`jsmod` solves both halves mechanically:
-
-```
-require("./modules/billing").register(app, {
-  hashId, PRICE_TABLE,                          // immutable: passed straight through
-  getSessionCache: () => sessionCache,          // mutable singleton: live read
-  setSessionCache: (v) => { sessionCache = v }, // ...and live write
+```js
+// Before: inline in server.js (from the bundled demo)
+app.post("/billing/reset", (req, res) => {
+  sessionCache = {};
+  res.json({ reset: true });
 });
+
+// After: server.js wires the original live binding into a module
+require("./modules/billing").register(app, {
+  hashId, PRICE_TABLE,
+  getSessionCache: () => sessionCache,
+  setSessionCache: (v) => { sessionCache = v; }
+});
+// modules/billing.js keeps the handler; assignment becomes setSessionCache({}).
 ```
 
-Inside the module, reads of `sessionCache` become `getSessionCache()` and
-`sessionCache = x` becomes `setSessionCache(x)`. The binding still lives in the
-parent, so two different modules that share one singleton stay in sync — exactly
-as they did before the cut.
+**Try the CLI:** `npx js-modularization-gold-standard --help` · **Reproduce the public demo:** `npm ci && npm test` in a clone.
 
-## The six gates
-
-An extraction is only allowed to land if it clears all six:
-
-1. **`node --check`** — every file still parses.
-2. **Route-count parity** — total registered routes is unchanged.
-3. **Isolation `register()`** — each module exports a `register(app, kernel)`.
-4. **Residual free-var audit** — the module references nothing it isn't given.
-   This is the gate that catches auth-gated handler bodies an HTTP probe never
-   reaches, because it reads the AST, not the running server.
-5. **Live probe-diff** — boot old vs. new, hit every route, diff status + body.
-6. **Incremental PRs** — one module per PR; gates 1–4 run in CI.
-
-`jsmod verify` automates 1–4. Gate 5 ships as the bundled self-test pattern
-(`npm test`). Gate 6 is process.
+The production numbers describe the methodology's reported origin at [DrRx](https://github.com/drrx-ai). This repository is a clean-room implementation with a synthetic Express fixture, not the production source or its probe logs. Its public test extracts two modules and compares **nine HTTP requests**, including a reset-then-read sequence across a shared cache. Matching probes establish parity for those requests; they are not a proof for every possible input.
 
 ## Install
 
 ```bash
-npm install -g js-modularization-gold-standard   # or: npx js-modularization-gold-standard ...
+npx js-modularization-gold-standard --help
+# Or install the short command:
+npm install -g js-modularization-gold-standard
+jsmod --help
 ```
 
-Requires Node ≥ 18. Built on [`ts-morph`](https://ts-morph.com).
+Requires Node.js 20 or later. Built on [ts-morph](https://ts-morph.com). Both `js-modularization-gold-standard` and `jsmod` run the same CLI.
 
-## Quickstart
+## The six gates
+
+Keep code movement and cleanup in separate commits. An extraction lands after these checks:
+
+1. **Syntax:** run `node --check` on the parent and extracted modules.
+2. **Route-count parity:** compare registration counts with `expectedRoutes` in the config.
+3. **Module boundary:** check that each module exports `register(app, kernel)`; exercise registration in your application tests.
+4. **Residual free variables:** audit the AST for references the module was not given, including handler bodies that HTTP probes may not reach.
+5. **Live probe diff:** boot the old and new versions, replay the same request sequence, and compare status and body. Include authenticated paths and shared-state sequences.
+6. **Incremental PRs:** move one module per PR so the diff and its evidence remain reviewable.
+
+`jsmod verify` provides static checks for gates 1–4. Its route count is a textual heuristic, and gate 3 checks the export shape rather than executing the module. Gate 2 only enforces parity when `expectedRoutes` is set. The [self-test](https://github.com/drrx-ai/JS-Modularization-Gold-Standard/blob/main/test/selftest.mjs) demonstrates gate 5 on the bundled fixture. Apply that pattern to your own application; gate 6 is review process.
+
+## Quickstart with the bundled demo
 
 ```bash
-# 1. See the seams: which routes touch which symbols, and what clusters
-jsmod survey examples/server.js
+git clone https://github.com/drrx-ai/JS-Modularization-Gold-Standard.git
+cd JS-Modularization-Gold-Standard
+npm ci
+npm test
 
-# 2. Inspect one region before committing to it
-jsmod analyze examples/server.js --range 26:33
+# Survey routes and shared symbols, then inspect one cut.
+node bin/cli.mjs survey examples/server.js
+node bin/cli.mjs analyze examples/server.js --range 26:33
 
-# 3. Describe the cuts (see jsmod.config.example.json), then preview
-jsmod extract --config jsmod.config.json --dry
-
-# 4. Do it for real, then clear the gates
-jsmod extract --config jsmod.config.json
-jsmod verify  --config jsmod.config.json
-
-# 5. Audit any single module on its own
-jsmod audit modules/billing.js
+# Preview first. These commands use the repository's local CLI.
+cp jsmod.config.example.json jsmod.config.json
+node bin/cli.mjs extract --dry
+node bin/cli.mjs extract
+node bin/cli.mjs verify
+node bin/cli.mjs audit examples/modules/billing.js
 ```
+
+`extract` edits the source file and writes a sibling `modules/` directory. Use a clean branch and inspect the dry run before applying it. Line ranges refer to the original file for that extraction; recalculate them before the next pass.
+
+For your own project, use `jsmod` after a global install or replace `node bin/cli.mjs` with `npx js-modularization-gold-standard`.
+
+## How shared state survives the move
+
+Passing a mutable singleton as a value can leave extracted modules holding an old object after the parent reassigns it. The parent therefore supplies getter/setter closures over the original binding:
+
+```js
+getSessionCache: () => sessionCache,
+setSessionCache: (v) => { sessionCache = v; }
+```
+
+The demo's billing module resets the cache through `setSessionCache({})`; the session module reads through `getSessionCache()`. Both still access the same live binding. Helpers and immutable bindings are passed directly through the `kernel` object.
+
+The extractor preserves the selected statement text apart from indentation and boundary wiring. That includes rewriting references to mutable bindings; it is not literally a byte-for-byte copy of the whole file.
 
 ## Config
 
-```jsonc
+```json
 {
-  "source": "src/server.js",   // the monolith
-  "app": "app",                 // the carrier symbol (first arg to register)
-  "expectedRoutes": 137,        // optional: enforce route-count parity
+  "source": "src/server.js",
+  "app": "app",
+  "expectedRoutes": 137,
   "modules": [
-    { "name": "billing", "ranges": [[420, 511]] },
-    { "name": "session", "ranges": [[512, 587]] }
+    { "name": "billing", "ranges": [[420, 511]] }
   ]
 }
 ```
 
-Ranges are **inclusive line numbers** and must align to whole top-level
-statements. A module may list multiple ranges; the first becomes the
-`register(...)` call site, the rest are removed.
+The default file is `jsmod.config.json`; pass `--config path/to/config.json` to choose another. Source paths are relative to the working directory. Ranges use inclusive line numbers and must contain whole top-level statements. For multiple ranges in one module, the first becomes the registration call site and the others are removed. Preserve registration and initialization order when choosing cuts.
 
-## Worked example
+See [jsmod.config.example.json](https://github.com/drrx-ai/JS-Modularization-Gold-Standard/blob/main/jsmod.config.example.json) for the runnable demo config. Its six registrations are five route handlers plus one `app.use` middleware registration; the self-test makes nine requests across those routes.
 
-`examples/server.js` is a small tangled Express app. Two domains —
-`billing` and `session` — both touch a `let sessionCache`, and `billing`
-*reassigns* it. After `jsmod extract`:
+## Scope and limitations
 
-- `modules/billing.js` gets `getSessionCache` **and** `setSessionCache`
-  (it reassigns), `modules/session.js` gets only `getSessionCache` (it reads).
-- The parent keeps `let sessionCache` and hands both modules closures over it.
-- `POST /billing/reset` clears the cache that `GET /session/:id` reads — across
-  two separate files — because the binding never left the parent.
+- Targets CommonJS files using `app.method(...)` registration. It does not convert an ESM application or resolve TypeScript types.
+- Review every generated diff and investigate unresolved symbols. Static checks and a finite probe suite do not establish universal behavioral equivalence.
+- Complex mutable expressions, shadowed identifiers, relative imports, and dependencies between extracted regions need particular review. Keep assignments simple; do not rely on assignment or increment return values across the generated setter boundary.
+- Preserve your production startup, middleware order, authenticated tests, and side-effect checks. The CLI does not generate application-specific live probes.
 
-`npm test` proves it: it extracts, runs the gates, then boots the original and
-the modularized version and diffs all nine routes. They match exactly, including the
-reset-then-read sequence.
+A small reproducible fixture for a wiring case is a useful contribution.
 
-## What jsmod assumes / does not do
+## Development and releases
 
-- **CommonJS, `app.method(...)` registration style** (Express and lookalikes).
-  The carrier symbol is configurable but the register pattern is the model.
-- **Contiguous statements per range.** Interleaved domains: reorder first, or
-  extract across multiple passes (which is what gate 6 wants anyway).
-- **JavaScript semantics, not TypeScript types.** It moves code; it won't fix
-  type errors a split exposes.
-- **It is not magic.** `jsmod` makes the safe move and proves the move; you
-  still read the diff. Treat any `unresolved` warning from `analyze` as a
-  "look here" flag.
+```bash
+npm ci
+npm test              # extract, verify, compare nine HTTP probes
+npm run test:package  # install the tarball; exercise both binaries and every command
+```
 
-If you've used this on your own monolith and hit a wiring case it didn't
-handle, that case is the most valuable thing you can contribute back.
+CI runs both checks. The [release guide](https://github.com/drrx-ai/JS-Modularization-Gold-Standard/blob/main/docs/releasing.md) describes npm publication and the fresh-cache `npx` check.
 
 ## Credits
 
-Built by [Vineet Parikh](https://github.com/vineetparikh-rph).
+Built by [Vineet Parikh](https://github.com/vineetparikh-pharmd), with contributions from [lotusmuds](https://github.com/lotusmuds) and [chrisboyd08043](https://github.com/chrisboyd08043).
 
-Contributions from [lotusmuds](https://github.com/lotusmuds) and
-[chrisboyd08043](https://github.com/chrisboyd08043).
-
-Developed at [DrRx Inc.](https://github.com/drrx-ai) as part of internal
-infrastructure work, and released as open source under the MIT license.
-
-## License
-
-MIT.
+Developed at [DrRx Inc.](https://github.com/drrx-ai) and released under the [MIT license](https://github.com/drrx-ai/JS-Modularization-Gold-Standard/blob/main/LICENSE).
