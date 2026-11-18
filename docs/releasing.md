@@ -6,7 +6,7 @@ The npm package is `js-modularization-gold-standard`. Both that executable name 
 2. Run `npm ci`, `npm test`, and `npm run test:package`. Inspect `npm pack --dry-run` and `npm audit`; review any advisory before release.
 3. Commit and push the release changes to `drrx-ai/JS-Modularization-Gold-Standard`. Confirm CI passes for the release commit.
 4. Authenticate with an npm account authorized to publish this package, then run `npm publish --access public`. Its `prepublishOnly` hook reruns the integration and tarball checks.
-5. From an empty directory with a fresh npm cache, run `npx --yes js-modularization-gold-standard --help` and `npx --yes js-modularization-gold-standard --version`. Compare the registry version and tarball integrity with the release artifact.
+5. npm may acknowledge an upload before processing finishes. Wait until the registry resolves the intended version; a temporary `0.0.0-stage` placeholder is not a successful release. If `npm stage list` shows a pending release, follow npm's staged-publishing approval flow with 2FA. From an empty directory with a fresh npm cache, run `npx --yes js-modularization-gold-standard --help` and `npx --yes js-modularization-gold-standard --version`. Compare the registry version and tarball integrity with the release artifact.
 6. Tag the published commit and create a GitHub release with the validation results. Submit launch links only after the registry checks pass.
 
 Store publishing credentials in the organization's secret manager. Never commit credentials or print them in CI output. Prefer [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) for future automation once configured for this package and repository.
