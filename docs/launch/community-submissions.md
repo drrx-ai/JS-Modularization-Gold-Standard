@@ -4,7 +4,7 @@ The npm 0.1.0 release has been verified with a fresh-cache `npx` run. These note
 
 ## Engineering story
 
-[How we split a 5,000-line Express server.js with zero behavioral diffs](engineering-story.md) is saved in this repository for the maintainer to post to DEV.to. It has not been posted externally.
+[How we split a 5,000-line Express server.js with zero behavioral diffs](https://dev.to/vineetparikhpharmd/how-we-split-a-5000-line-express-serverjs-with-zero-behavioral-diffs-4g48) was published on DEV.to on November 18, 2026. The [repository copy](engineering-story.md) preserves the published story and its AI-drafting disclosure.
 
 ## awesome-codemods
 

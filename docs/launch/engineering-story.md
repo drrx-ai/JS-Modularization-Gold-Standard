@@ -1,7 +1,8 @@
 ---
 title: How we split a 5,000-line Express server.js with zero behavioral diffs
-published: false
+published: true
 tags: node, javascript, refactoring, opensource
+canonical_url: https://dev.to/vineetparikhpharmd/how-we-split-a-5000-line-express-serverjs-with-zero-behavioral-diffs-4g48
 ---
 
 Our Express `server.js` went from **5,121 lines to 1,402** across incremental PRs. The result we cared about was zero behavioral differences in the checks we ran after each move.
@@ -88,3 +89,5 @@ For a production application, add authenticated requests, startup checks, middle
 The method is useful even without this CLI: make dependencies explicit, preserve the original binding, separate moving from cleanup, and require evidence at each step.
 
 [Explore the code, example, and six gates on GitHub](https://github.com/drrx-ai/JS-Modularization-Gold-Standard). If you have a small example of shared-state wiring that breaks during extraction, we'd welcome a reproducible issue.
+
+*Disclosure: This article was drafted by an AI assistant from the project’s code, test results, and maintainer-provided production context.*
